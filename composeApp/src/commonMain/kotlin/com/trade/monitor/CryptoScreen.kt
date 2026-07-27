@@ -43,7 +43,7 @@ fun CryptoScreen(
                 onSuccess = { positionsState = UiState.Success(it) },
                 onFailure = { positionsState = UiState.Error(it.message ?: "Failed") }
             )
-            service.fetchTradeHistory(89).fold(
+            service.fetchTradeHistory(89, source = "crypto").fold(
                 onSuccess = { historyState = UiState.Success(it) },
                 onFailure = { historyState = UiState.Error(it.message ?: "Failed") }
             )
@@ -56,7 +56,7 @@ fun CryptoScreen(
                 onSuccess = { positionsState = UiState.Success(it) },
                 onFailure = { positionsState = UiState.Error(it.message ?: "Failed") }
             )
-            service.fetchTradeHistory(89).fold(
+            service.fetchTradeHistory(89, source = "crypto").fold(
                 onSuccess = { historyState = UiState.Success(it) },
                 onFailure = { historyState = UiState.Error(it.message ?: "Failed") }
             )
@@ -145,7 +145,7 @@ fun CryptoScreen(
                 }
                 is UiState.Error -> item { ErrorCard(s.message) { loadData() } }
                 is UiState.Success -> {
-                    val cryptoTrades = s.data.trades.filter { it.isCrypto }
+                    val cryptoTrades = s.data.trades
 
                     // Daily PnL
                     item {

@@ -47,7 +47,7 @@ fun ForexScreen(
                 onSuccess = { positionsState = UiState.Success(it) },
                 onFailure = { positionsState = UiState.Error(it.message ?: "Failed") }
             )
-            service.fetchTradeHistory(89).fold(
+            service.fetchTradeHistory(89, source = "forex").fold(
                 onSuccess = { historyState = UiState.Success(it) },
                 onFailure = { historyState = UiState.Error(it.message ?: "Failed") }
             )
@@ -60,7 +60,7 @@ fun ForexScreen(
                 onSuccess = { positionsState = UiState.Success(it) },
                 onFailure = { positionsState = UiState.Error(it.message ?: "Failed") }
             )
-            service.fetchTradeHistory(89).fold(
+            service.fetchTradeHistory(89, source = "forex").fold(
                 onSuccess = { historyState = UiState.Success(it) },
                 onFailure = { historyState = UiState.Error(it.message ?: "Failed") }
             )
@@ -151,7 +151,13 @@ fun ForexScreen(
                 }
                 is UiState.Error -> item { ErrorCard(s.message) { loadData() } }
                 is UiState.Success -> {
-                    val forexTrades = s.data.trades.filter { it.isForex }
+                    val forexTrades = s.data.trades
+
+                    // Total PnL summary (at top)
+                    item {
+                        val totalPnl = forexTrades.sumOf { it.pnl_usd }
+                        TotalPnlCard(totalPnl, forexTrades.size)
+                    }
 
                     // Daily PnL breakdown
                     item {
@@ -164,12 +170,6 @@ fun ForexScreen(
                     // Trade list
                     items(forexTrades) { trade ->
                         TradeRow(trade)
-                    }
-
-                    // Total PnL summary
-                    item {
-                        val totalPnl = forexTrades.sumOf { it.pnl_usd }
-                        TotalPnlCard(totalPnl, forexTrades.size)
                     }
                 }
             }

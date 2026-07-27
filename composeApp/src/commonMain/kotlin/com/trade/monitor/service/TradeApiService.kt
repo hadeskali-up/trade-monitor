@@ -28,8 +28,13 @@ class TradeApiService(
         }
     }
 
-    suspend fun fetchTradeHistory(limit: Int = 89): Result<TradeHistoryResponse> = runCatching {
-        client.get("$baseUrl/api/trade-history?limit=$limit").body()
+    suspend fun fetchTradeHistory(limit: Int = 89, source: String = ""): Result<TradeHistoryResponse> = runCatching {
+        val url = if (source.isNotEmpty()) {
+            "$baseUrl/api/trade-history?limit=$limit&source=$source"
+        } else {
+            "$baseUrl/api/trade-history?limit=$limit"
+        }
+        client.get(url).body()
     }
 
     suspend fun fetchForexPositions(): Result<ForexPositionsResponse> = runCatching {
