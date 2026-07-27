@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.trade.monitor.core.UiState
 import com.trade.monitor.core.fold
 import com.trade.monitor.model.*
+import com.trade.monitor.service.TradeApiService
 import com.trade.monitor.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -280,7 +281,7 @@ private fun CryptoPositionCard(pos: CryptoPosition) {
             Spacer(Modifier.height(4.dp))
             // TP/SL progress
             LinearProgressIndicator(
-                progress = { (pos.tp_progress / 100f).coerceIn(0f, 1f) },
+                progress = { ((pos.tp_progress / 100.0).coerceIn(0.0, 1.0)).toFloat() },
                 modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                 color = ProfitGreen,
                 trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
