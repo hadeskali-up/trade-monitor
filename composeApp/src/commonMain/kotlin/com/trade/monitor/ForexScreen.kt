@@ -54,8 +54,9 @@ fun ForexScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        while (autoRefresh) {
+    LaunchedEffect(autoRefresh) {
+        // Always fetch once when the screen opens or the toggle flips on.
+        do {
             service.fetchForexPositions().fold(
                 onSuccess = { positionsState = UiState.Success(it) },
                 onFailure = { positionsState = UiState.Error(it.message ?: "Failed") }
@@ -64,8 +65,8 @@ fun ForexScreen(
                 onSuccess = { historyState = UiState.Success(it) },
                 onFailure = { historyState = UiState.Error(it.message ?: "Failed") }
             )
-            delay(30_000)
-        }
+            if (autoRefresh) delay(30_000)
+        } while (autoRefresh)
     }
 
     Scaffold(
@@ -151,7 +152,8 @@ fun ForexScreen(
                 }
                 is UiState.Error -> item { ErrorCard(s.message) { loadData() } }
                 is UiState.Success -> {
-                    val forexTrades = s.data.trades
+                    // Newest trade first
+                    val forexTrades = s.data.trades.sortedByDescending { it.sortKey }
 
                     // Total PnL summary (at top)
                     item {
@@ -167,7 +169,7 @@ fun ForexScreen(
                         )
                     }
 
-                    // Trade list
+                    // Trade list (newest first)
                     items(forexTrades) { trade ->
                         TradeRow(trade)
                     }
@@ -370,8 +372,10 @@ private fun TradeRow(trade: TradeRecord) {
 private fun DailyPnlBreakdown(trades: List<TradeRecord>, label: String) {
     // Group trades by normalized date, sum PnL per day
     val dailyPnl = trades.groupBy { it.normalizedDate }
-        .mapValues { (_, dayTrades) -> dayTrades.sumOf { it.pnl_usd } }
-        .toList()
+        .map { (date, dayTrades) ->
+            val dayLabel = dayTrades.firstOrNull()?.monthDayLabel ?: date
+            Triple(date, dayLabel, dayTrades.sumOf { it.pnl_usd })
+        }
         .sortedByDescending { it.first }
         .take(10) // last 10 days
 
@@ -383,7 +387,7 @@ private fun DailyPnlBreakdown(trades: List<TradeRecord>, label: String) {
         Column(Modifier.padding(14.dp)) {
             Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onTertiaryContainer)
             Spacer(Modifier.height(8.dp))
-            dailyPnl.forEach { (date, pnl) ->
+            dailyPnl.forEach { (_, dayLabel, pnl) ->
                 val pnlColor = if (pnl >= 0) ProfitGreen else LossRed
                 val sign = if (pnl >= 0) "+" else ""
                 Row(
@@ -391,7 +395,7 @@ private fun DailyPnlBreakdown(trades: List<TradeRecord>, label: String) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        date.substring(5).replace("-", "/"),
+                        dayLabel,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onTertiaryContainer
                     )

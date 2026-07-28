@@ -50,8 +50,9 @@ fun CryptoScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        while (autoRefresh) {
+    LaunchedEffect(autoRefresh) {
+        // Always fetch once when the screen opens or the toggle flips on.
+        do {
             service.fetchCryptoPositions().fold(
                 onSuccess = { positionsState = UiState.Success(it) },
                 onFailure = { positionsState = UiState.Error(it.message ?: "Failed") }
@@ -60,8 +61,8 @@ fun CryptoScreen(
                 onSuccess = { historyState = UiState.Success(it) },
                 onFailure = { historyState = UiState.Error(it.message ?: "Failed") }
             )
-            delay(30_000)
-        }
+            if (autoRefresh) delay(30_000)
+        } while (autoRefresh)
     }
 
     Scaffold(
@@ -145,7 +146,14 @@ fun CryptoScreen(
                 }
                 is UiState.Error -> item { ErrorCard(s.message) { loadData() } }
                 is UiState.Success -> {
-                    val cryptoTrades = s.data.trades
+                    // Newest trade first
+                    val cryptoTrades = s.data.trades.sortedByDescending { it.sortKey }
+
+                    // Total PnL (summary at top)
+                    item {
+                        val totalPnl = cryptoTrades.sumOf { it.pnl_usd }
+                        TotalPnlCardCrypto(totalPnl, cryptoTrades.size)
+                    }
 
                     // Daily PnL
                     item {
@@ -155,15 +163,9 @@ fun CryptoScreen(
                         )
                     }
 
-                    // Trade list
+                    // Trade list (newest first)
                     items(cryptoTrades) { trade ->
                         TradeRowCrypto(trade)
-                    }
-
-                    // Total PnL
-                    item {
-                        val totalPnl = cryptoTrades.sumOf { it.pnl_usd }
-                        TotalPnlCardCrypto(totalPnl, cryptoTrades.size)
                     }
                 }
             }
@@ -363,8 +365,10 @@ private fun TradeRowCrypto(trade: TradeRecord) {
 @Composable
 private fun DailyPnlBreakdownCrypto(trades: List<TradeRecord>, label: String) {
     val dailyPnl = trades.groupBy { it.normalizedDate }
-        .mapValues { (_, dayTrades) -> dayTrades.sumOf { it.pnl_usd } }
-        .toList()
+        .map { (date, dayTrades) ->
+            val label = dayTrades.firstOrNull()?.monthDayLabel ?: date
+            Triple(date, label, dayTrades.sumOf { it.pnl_usd })
+        }
         .sortedByDescending { it.first }
         .take(10)
 
@@ -376,7 +380,7 @@ private fun DailyPnlBreakdownCrypto(trades: List<TradeRecord>, label: String) {
         Column(Modifier.padding(14.dp)) {
             Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onTertiaryContainer)
             Spacer(Modifier.height(8.dp))
-            dailyPnl.forEach { (date, pnl) ->
+            dailyPnl.forEach { (_, dayLabel, pnl) ->
                 val pnlColor = if (pnl >= 0) ProfitGreen else LossRed
                 val sign = if (pnl >= 0) "+" else ""
                 Row(
@@ -384,7 +388,7 @@ private fun DailyPnlBreakdownCrypto(trades: List<TradeRecord>, label: String) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        date.substring(5).replace("-", "/"),
+                        dayLabel,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onTertiaryContainer
                     )

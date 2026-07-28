@@ -53,4 +53,18 @@ data class TradeRecord(
             date.substringAfter("T").substringBefore(".").take(5)
         } else ""
     }
+
+    // Comparable key for ordering trades newest-first. Falls back to the raw
+    // date string when normalization can't produce a full YYYY-MM-DD.
+    val sortKey: String get() {
+        val d = normalizedDate
+        val t = if (displayTime.isNotEmpty()) displayTime else "00:00"
+        return if (d.length >= 10) "$d $t" else "$date $t"
+    }
+
+    // "MM/DD" label for daily breakdowns; safe against empty/short dates.
+    val monthDayLabel: String get() {
+        val d = normalizedDate
+        return if (d.length >= 10) d.substring(5).replace("-", "/") else d
+    }
 }
